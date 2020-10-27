@@ -71,6 +71,72 @@ pub fn selection_sort<T: PartialOrd>(items: &mut [T], sort_order: SortOrder) {
     }
 }
 
+fn merge<T: PartialOrd + Copy + Default>(
+    items: &mut [T],
+    begin_index: usize,
+    middle_index: usize,
+    end_index: usize,
+    sort_order: &SortOrder,
+) {
+    let comparator = match &sort_order {
+        SortOrder::Nondecreasing => |a: &T, b: &T| a < b,
+        SortOrder::Nonincreasing => |a: &T, b: &T| a > b,
+    };
+
+    let mut left = Vec::with_capacity(middle_index - begin_index + 1);
+    let mut right = Vec::with_capacity(end_index - middle_index);
+
+    left.resize_with(middle_index - begin_index + 1, Default::default);
+    right.resize_with(end_index - middle_index, Default::default);
+
+    left.copy_from_slice(&items[begin_index..middle_index + 1]);
+    right.copy_from_slice(&items[middle_index + 1..end_index + 1]);
+
+    let mut i: usize = 0;
+    let mut j: usize = 0;
+
+    for k in begin_index..=end_index {
+        if i == left.len() && j == right.len() {
+            return;
+        }
+
+        if i == left.len() {
+            items[k] = right[j];
+            j += 1;
+            continue;
+        }
+
+        if j == right.len() {
+            items[k] = left[i];
+            i += 1;
+            continue;
+        }
+
+        if comparator(&left[i], &right[j]) {
+            items[k] = left[i];
+            i += 1;
+        } else {
+            items[k] = right[j];
+            j += 1;
+        }
+    }
+}
+
+pub fn merge_sort<T: PartialOrd + Copy + Default>(
+    items: &mut [T],
+    begin_index: usize,
+    end_index: usize,
+    sort_order: &SortOrder,
+) {
+    if begin_index < end_index {
+        let middle_index = (begin_index + end_index) / 2;
+
+        merge_sort(items, begin_index, middle_index, &sort_order);
+        merge_sort(items, middle_index + 1, end_index, &sort_order);
+        merge(items, begin_index, middle_index, end_index, &sort_order);
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -192,6 +258,71 @@ mod test {
     fn selection_sort_one_element() {
         let mut array = [1];
         selection_sort(&mut array, SortOrder::Nondecreasing);
+        assert_eq!(array, [1]);
+    }
+
+    #[test]
+    fn merge_sort_nondecreasing() {
+        let mut array = [5, 2, 4, 6, 1, 3];
+        let length = array.len();
+        merge_sort(
+            &mut array,
+            0,
+            length.saturating_sub(1),
+            &SortOrder::Nondecreasing,
+        );
+        assert_eq!(array, [1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn merge_sort_nonincreasing() {
+        let mut array = [5, 2, 4, 6, 1, 3];
+        let length = array.len();
+        merge_sort(
+            &mut array,
+            0,
+            length.saturating_sub(1),
+            &SortOrder::Nonincreasing,
+        );
+        assert_eq!(array, [6, 5, 4, 3, 2, 1]);
+    }
+
+    #[test]
+    fn merge_sort_odd_length() {
+        let mut array = [5, 2, 7, 4, 6, 1, 3];
+        let length = array.len();
+        merge_sort(
+            &mut array,
+            0,
+            length.saturating_sub(1),
+            &SortOrder::Nondecreasing,
+        );
+        assert_eq!(array, [1, 2, 3, 4, 5, 6, 7]);
+    }
+
+    #[test]
+    fn merge_sort_no_elements() {
+        let mut array: [i32; 0] = [];
+        let length = array.len();
+        merge_sort(
+            &mut array,
+            0,
+            length.saturating_sub(1),
+            &SortOrder::Nondecreasing,
+        );
+        assert_eq!(array, []);
+    }
+
+    #[test]
+    fn merge_sort_one_element() {
+        let mut array = [1];
+        let length = array.len();
+        merge_sort(
+            &mut array,
+            0,
+            length.saturating_sub(1),
+            &SortOrder::Nondecreasing,
+        );
         assert_eq!(array, [1]);
     }
 }
